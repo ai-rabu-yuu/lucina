@@ -18,6 +18,8 @@ nah = ["01.png", "02.jpg", "03.jpg", "04.jpg", "05.png", "06.jpg", "07.png", "08
        "09.png", "10.png", "11.jpg", "12.jpg"]
 nah_prf = "http://ltrf.club/nah/img/"
 
+tamamo = "http://ltrf.club/tamamo.png"
+
 previous_search = []
 
 def emoji(name):
@@ -81,11 +83,13 @@ async def on_message(message):
                                 await client.send_message(message.channel, response)
                         except:
                             await client.send_message(message.channel, "Sorry, something went wrong! You can try again if you'd like.")
-    elif 'nah' in message.content.split(" "):
+    elif 'tamamo' in message.content.lower():
+        await client.send_message(message.channel, tamamo)
+    elif 'nah' in message.content.lower().split(" "):
         await client.send_message(message.channel, nah_prf + random.choice(nah))
-    elif "anime" in message.content:
+    elif "anime" in message.content.lower():
         await client.send_message(message.channel, message.author.mention + " " + emoji("gun"))
-    elif "pegasus" in message.content:
+    elif "pegasus" in message.content.lower():
         await client.send_message(message.channel, message.author.mention + " " + emoji(random.choice(pegasus)))
     elif client.user.mentioned_in(message):
         lines_list = tokenize.sent_tokenize(message.content)
