@@ -5,7 +5,9 @@ import re
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk import tokenize
 import wikipedia
+import database.coinbase as cbase
 
+cb = cbase.CoinBase()
 client = discord.Client()
 sid = SentimentIntensityAnalyzer()
 
@@ -28,17 +30,55 @@ def emoji(name):
         if e.name == name:
             return str(e)
 
+
 @client.event
 async def on_ready():
     print('Logged in as')
     print(client.user.name)
     print(client.user.id)
     print('------')
+    for member in client.get_all_members():
+        print("Creating new balance for: " + member.id + ": " + member.name)
+        print(cb.new_user(int(member.id), member.name))
+
 
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
+    elif message.content.startswith("!balance"):
+        bal = cb.balance(int(message.author.id))
+        if bal[0] == 1:
+            await client.send_message(message.channel, message.author.mention + ", your balance is: " + str(bal[1][0]) + emoji("memecoin"))
+        else:
+            await client.send_message(message.channel, message.author.mention + ", something went wrong: " + str(bal[1]))
+    elif message.content.startswith("!transfer"):
+        if len(message.mentions) != 1:
+            await client.send_message(message.channel, message.author.mention + ", you can only send " + emoji("memecoin") + " to one user at a time.")
+        else:
+            toks = message.content.split()
+            if len(toks) != 3:
+                await client.send_message(message.channel, message.author.mention + ", you need to specify an amount.")
+            else:
+                uid1 = message.author.id
+                uid2 = message.mentions[0].id
+                amount = float(toks[2])
+                ret = cb.transfer(uid1, uid2, amount)
+                if ret[0] == 1:
+                    buf = message.author.mention + ", your transaction was successful! New balances:\n"
+                    buf += message.author.name + ": " + str(cb.balance(uid1)[1][0]) + emoji("memecoin") + "\n"
+                    buf += message.mentions[0].name + ": " + str(cb.balance(uid2)[1][0]) + emoji("memecoin")
+                    await client.send_message(message.channel, buf)
+                else:
+                    buf = message.author.mention + ", your transaction failed. Reason:\n"
+                    if "m_uid1" in ret[1]:
+                        buf += "You don't have an account.\n"
+                    if "m_uid2" in  ret[1]:
+                        buf += message.mentions[0].name + " doesn't have an account.\n"
+                    if "insufficient" in ret[1]:
+                        buf += "You don't have enough money."
+                    await client.send_message(message.channel, buf)
+
     elif message.content.startswith('!pegasus'):
         await client.send_message(message.channel, emoji(random.choice(pegasus)))
     elif message.content.startswith('!pascal'):
@@ -60,15 +100,15 @@ async def on_message(message):
             response += "\n\n" + "I can show you other possible searches if you @ me and say 'other searches'."
             await client.send_message(message.channel, response)
             message = await client.wait_for_message(author=message.author, timeout=15)
-            if message != None and client.user.mentioned_in(message) and "other searches" in message.content:
-                response = "Here are the other searches. If you'd like the see the result for one, @ me with the number."
+            if message is not None and client.user.mentioned_in(message) and "other searches" in message.content:
+                response = "Here are the other results. If you'd like the see the result for one, @ me with the number."
                 for search in searches:
                     response += "\n\t" + search
                 await client.send_message(message.channel, response)
                 wait = True
                 while wait:
                     message = await client.wait_for_message(author=message.author, timeout=15)
-                    if message == None:
+                    if message is None:
                         wait = False
                     elif len(message.content) > 0 and client.user.mentioned_in(message):
                         try:
@@ -117,5 +157,5 @@ async def on_message(message):
 key = None
 with open("secret.key") as f:
     key = f.readline()
-if key != None:
+if key is not None:
     client.run(key)
